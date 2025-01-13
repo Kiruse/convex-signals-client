@@ -1,0 +1,20 @@
+{
+  "name": "convex-signals-client",
+  "version": "0.1.0",
+  "module": "dist/index.js",
+  "type": "module",
+  "author": "Kiruse",
+  "repository": "https://github.com/kiruse/convex-signals-client",
+  "scripts": {
+    "build": "tsc",
+    "prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "@preact/signals": "^2.0.0",
+    "convex": "^1.17.4",
+    "typescript": "^5.0.0"
+  }
+}
