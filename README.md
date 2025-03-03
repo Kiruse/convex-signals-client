@@ -25,6 +25,10 @@ const computed = client.queryComputed(api.example.exampleQuery, () => {
   return [{ values: [1, 2, 3] }];
 });
 
+// sync waits for the signal to be first loaded from the server and returns its value.
+// on subsequent calls, it resolves immediately with the locally cached value.
+console.log(await computed.sync());
+
 await client.query(api.example.exampleQuery, { values: [1, 2, 3] });
 await client.mutation(api.example.exampleMutation, { values: [1, 2, 3] });
 await client.action(api.example.exampleAction, { values: [1, 2, 3] });

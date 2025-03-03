@@ -22,6 +22,8 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
   refresh(): void;
   /** Unsubscribe from the underlying Convex query. The signal will no longer update. */
   destroy(): void;
+  /** Waits until the signal has been first loaded from the server and returns its value. */
+  sync(): Promise<FunctionReturnType<Query>>;
 }
 
 export class ConvexSignalsClient {
@@ -70,6 +72,7 @@ export class ConvexSignalsClient {
     const sig = signal<FunctionReturnType<Query>>();
     let counter = 0;
     const result = {
+      // note: this field is updated in the #onTransition callback
       [IsLoaded]: false,
       get value() {
         return sig.value;
@@ -98,6 +101,21 @@ export class ConvexSignalsClient {
         this.#signals.delete(queryToken);
         unsubscribe();
       },
+      sync(timeout = 10000) {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            reject(new Error('Query timed out'));
+            unsub();
+          }, timeout);
+          const unsub = sig.subscribe((value) => {
+            if (this.isLoaded) {
+              resolve(value);
+              unsub();
+              clearTimeout(timer);
+            }
+          });
+        });
+      },
     };
     this.#signals.set(queryToken, result);
     return result;
@@ -121,6 +139,7 @@ export class ConvexSignalsClient {
       refresh: () => sig.value.refresh(),
       subscribe: (fn: (value: FunctionReturnType<Query> | undefined) => void) => sig.value.subscribe(fn),
       destroy: () => sig.value.destroy(),
+      sync: () => sig.value.sync(),
     }
   }
 
