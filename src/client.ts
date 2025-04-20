@@ -103,14 +103,14 @@ export class ConvexSignalsClient {
       },
       sync(timeout = 10000) {
         return new Promise((resolve, reject) => {
-          const timer = setTimeout(() => {
+          var timer = setTimeout(() => {
             reject(new Error('Query timed out'));
-            unsub();
+            unsub?.();
           }, timeout);
-          const unsub = sig.subscribe((value) => {
+          var unsub = sig.subscribe((value) => {
             if (this.isLoaded) {
               resolve(value);
-              unsub();
+              unsub?.();
               clearTimeout(timer);
             }
           });
