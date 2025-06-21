@@ -1,3 +1,5 @@
+!dist/
 node_modules/
 src/
-package-lock.json
+bun.lock
+tsconfig.json

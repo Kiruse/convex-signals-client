@@ -60,6 +60,11 @@ Due to lack of direct resource management control, there are some edge cases to 
 
 For other patterns, you may need to manually manage the signal's lifecycle by keeping a subscription active and/or calling `destroy` on it. I'll gladly accept PRs to improve the lifecycle management of the signals or to hook into garbage collection.
 
+## React & Preact Hooks
+Ships with two modules `convex-signals-client/react` and `convex-signals-client/preact` respectively. React and Preact are peer dependencies. These modules both expose the `useQuery` and `useComputedQuery` hooks.
+
+For React, you likely will use [@preact/signals-react](https://www.npmjs.com/package/@preact/signals-react), in which case you will either need the [@preact/signals-react-transformer](https://www.npmjs.com/package/@preact/signals-react-transformer) for Webpack, or the `useSignals()` hook expored from `@preact/signals-react/runtime` to make your components respond to signal changes.
+
 ## License
 The MIT License (MIT)
 Copyright © 2025 Kiruse

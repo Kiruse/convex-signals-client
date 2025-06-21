@@ -1,5 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import { BaseConvexClient, type MutationOptions, type QueryToken } from 'convex/browser';
+import type { AuthTokenFetcher } from 'convex/react';
 import type { ArgsAndOptions, FunctionReturnType } from 'convex/server';
 import { getFunctionName } from 'convex/server';
 import type { FunctionReference } from 'convex/server';
@@ -29,6 +30,7 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
 export class ConvexSignalsClient {
   #client: BaseConvexClient;
   #signals = new Map<QueryToken, ConvexSignal<any>>();
+  #authenticated = signal(false);
 
   constructor(baseUrl: string) {
     this.#client = new BaseConvexClient(
@@ -167,5 +169,27 @@ export class ConvexSignalsClient {
     const name = getFunctionName(mutation);
     const [args, options] = argsAndOptions;
     return this.#client.mutation(name, args, options);
+  }
+
+  /** Set the auth token fetcher to be used for subsequent queries and mutations. Should return
+   * `null` if the token cannot be retrieved, for example when the user's rights were permanently
+   * revoked. Otherwise, the token should be a JWT-encoded OpenID Connect Identity Token.
+   * @see BaseConvexClient.setAuth
+   */
+  setAuth(fetcher: AuthTokenFetcher) {
+    this.#client.setAuth(fetcher, (authenticated) => {
+      this.#authenticated.value = authenticated;
+    });
+    return this;
+  }
+
+  clearAuth() {
+    this.#client.clearAuth();
+    return this;
+  }
+
+  /** A signal storing whether the client is currently authenticated. */
+  get authenticated() {
+    return this.#authenticated;
   }
 }
