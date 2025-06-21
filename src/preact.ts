@@ -7,7 +7,7 @@ export function useQuery<T extends FunctionReference<"query">>(client: ConvexSig
   useEffect(() => {
     return () => signal.destroy();
   }, [signal]);
-  return signal.value;
+  return signal;
 }
 
 export function useComputedQuery<T extends FunctionReference<"query">>(client: ConvexSignalsClient, query: T, factory: () => ArgsAndOptions<T, QueryOptions>) {
@@ -15,5 +15,5 @@ export function useComputedQuery<T extends FunctionReference<"query">>(client: C
   useEffect(() => {
     return () => signal.destroy();
   }, [signal]);
-  return signal.value;
+  return signal;
 }
