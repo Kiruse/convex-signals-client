@@ -1,11 +1,16 @@
 {
   "name": "convex-signals-client",
-  "version": "0.1.4",
+  "version": "0.1.5",
+  "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "author": "Kiruse",
   "repository": "https://github.com/kiruse/convex-signals-client",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js"
+  },
   "scripts": {
     "build": "tsc",
     "prebuild": "rm -rf dist",
