@@ -1,6 +1,6 @@
 {
   "name": "convex-signals-client",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,6 +26,7 @@
     "@preact/signals": "^2.0.0",
     "@preact/signals-react": "^3.2.0",
     "convex": "^1.17.4",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vue": "^3.5.13"
   }
 }

@@ -7,6 +7,31 @@ import type { FunctionReference } from 'convex/server';
 
 const IsLoaded = Symbol('IsLoaded');
 
+export interface SignalFactory {
+  <T>(): Signalish<T | undefined, true>;
+  <T>(value: T): Signalish<T, true>;
+}
+
+export interface ComputedFactory {
+  <T>(fn: () => T): Signalish<T, false>;
+}
+
+export type Signalish<T, Writable extends boolean = true> =
+  Writable extends true
+  ? {
+      value: T;
+      subscribe: (fn: (value: T) => void) => () => void;
+    }
+  : {
+      readonly value: T;
+      subscribe: (fn: (value: T) => void) => () => void;
+    };
+
+export interface ConvexSignalsClientOptions {
+  signal?: SignalFactory;
+  computed?: ComputedFactory;
+}
+
 export interface QuerySignalOptions {}
 
 export interface QueryOptions {
@@ -31,13 +56,17 @@ export class ConvexSignalsClient {
   #client: BaseConvexClient;
   #signals = new Map<QueryToken, ConvexSignal<any>>();
   #authenticated = signal(false);
+  #signal: SignalFactory;
+  #computed: ComputedFactory;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, options: ConvexSignalsClientOptions = {}) {
     this.#client = new BaseConvexClient(
       baseUrl,
       this.#onTransition,
       {},
     );
+    this.#signal = options.signal ?? signal;
+    this.#computed = options.computed ?? computed;
   }
 
   #onTransition = (updatedQueries: QueryToken[]) => {
@@ -71,7 +100,7 @@ export class ConvexSignalsClient {
       return this.#signals.get(queryToken)!;
     }
 
-    const sig = signal<FunctionReturnType<Query>>();
+    const sig = this.#signal<FunctionReturnType<Query>>();
     let counter = 0;
     const result = {
       // note: this field is updated in the #onTransition callback
@@ -128,7 +157,7 @@ export class ConvexSignalsClient {
     query: Query,
     fnArgsAndOptions: () => ArgsAndOptions<Query, QueryOptions>
   ): ConvexSignal<Query> {
-    const sig = computed(() => {
+    const sig = this.#computed(() => {
       return this.querySignal(query, ...fnArgsAndOptions());
     });
     return {
