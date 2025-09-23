@@ -1,12 +1,14 @@
 # convex-signals-client
-An integration of [Convex](https://www.convex.dev/) with [Preact Signals](https://preactjs.com/guide/v10/signals).
+An integration of [Convex](https://www.convex.dev/) with [Preact Signals](https://preactjs.com/guide/v10/signals) or [Vue](https://vuejs.org).
 
 ## Installation
 Install using your favorite package manager's equivalent of:
 
 ```bash
-$ npm install convex @preact/signals convex-signals-client
+$ npm install convex convex-signals-client @preact/signals
 ```
+
+Currently, this package has a strict peer dependency on `@preact/signals`, though this will be fixed in v0.2. It still supports Vue through the `VueConvexSignalsClient`.
 
 ## Usage
 ```typescript
@@ -52,6 +54,54 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
 - `refresh`: Manually refresh the signal value from the server.
 - `destroy`: Manually unsubscribe the signal from the Convex query. The signal will no longer automatically update, but you may still be able to `refresh` it.
 
+## Vue Integration
+Vue provides its own signals. This library only really cares about the `value` property and the `subscribe` method, for which this library delivers a wrapper implementation:
+
+```ts
+import { VueConvexSignalsClient } from 'convex-signals-client/vue';
+import { ref } from 'vue';
+import { api } from '../convex/_generated';
+
+// assuming a Nuxt environment, for example
+const convex = new VueConvexSignalsClient(config.public.convexUrl || '');
+
+// I typically use a vanity sessionId for reactive queries & cache invalidation
+const sessionId = ref<string | undefined>();
+const user = convex.queryComputed(api.users.me, () => [{ sessionId }]);
+user.subscribe(usr => {
+  console.log(usr);
+});
+```
+
+Does not break Nuxt SSR, however, it is also not fully compatible and does not support hydration.
+
+## React & Preact Hooks
+Unlike the Vue integration, P/React integration is achieved through hooks, which are exposed by the two sub-modules `convex-signals-client/react` and `convex-signals-client/preact` respectively. React and Preact are peer dependencies. These modules both expose the `useQuery` and `useComputedQuery` hooks, which take a `ConvexSignalsClient` instance.
+
+For React, you likely will use [@preact/signals-react](https://www.npmjs.com/package/@preact/signals-react), in which case you will either need the [@preact/signals-react-transformer](https://www.npmjs.com/package/@preact/signals-react-transformer) for Webpack, or the `useSignals()` hook expored from `@preact/signals-react/runtime` to make your components respond to signal changes.
+
+## Authentication
+Currently, Convex only supports OIDC. Following is my preferred setup:
+
+```ts
+const convex = new ConvexSignalsClient(convexUrl);
+
+convex.setAuth(async () => {
+  // fetch OIDC token
+  return accessToken;
+});
+
+// isAuthenticated will be undefined aka "initial" while we are attempting to login
+// once the authentication succeeded or failed, it will be true or false respectively
+convex.authenticated.subscribe(isAuthenticated => {
+  if (isAuthenticated === undefined) {
+    sessionId.value = undefined;
+  } else if (isAuthenticated) {
+    sessionId.value = Date.now().toString(36).slice(2) + '-' + Math.random().toString(36).slice(2);
+  }
+});
+```
+
 ## Caveats
 Due to lack of direct resource management control, there are some edge cases to avoid bugs. This library is built under the assumption that you will generally use one of two patterns:
 
@@ -59,11 +109,6 @@ Due to lack of direct resource management control, there are some edge cases to 
 - Subscribers: Using the `subscribe` method to keep your application in sync with the server. The final unsubscribe method called will also destroy the signal.
 
 For other patterns, you may need to manually manage the signal's lifecycle by keeping a subscription active and/or calling `destroy` on it. I'll gladly accept PRs to improve the lifecycle management of the signals or to hook into garbage collection.
-
-## React & Preact Hooks
-Ships with two modules `convex-signals-client/react` and `convex-signals-client/preact` respectively. React and Preact are peer dependencies. These modules both expose the `useQuery` and `useComputedQuery` hooks.
-
-For React, you likely will use [@preact/signals-react](https://www.npmjs.com/package/@preact/signals-react), in which case you will either need the [@preact/signals-react-transformer](https://www.npmjs.com/package/@preact/signals-react-transformer) for Webpack, or the `useSignals()` hook expored from `@preact/signals-react/runtime` to make your components respond to signal changes.
 
 ## License
 The MIT License (MIT)
