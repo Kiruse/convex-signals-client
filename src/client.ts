@@ -55,7 +55,7 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
 export class ConvexSignalsClient {
   #client: BaseConvexClient;
   #signals = new Map<QueryToken, ConvexSignal<any>>();
-  #authenticated = signal(false);
+  #authenticated: Signalish<boolean | undefined, true>;
   #signal: SignalFactory;
   #computed: ComputedFactory;
 
@@ -67,6 +67,7 @@ export class ConvexSignalsClient {
     );
     this.#signal = options.signal ?? signal;
     this.#computed = options.computed ?? computed;
+    this.#authenticated = this.#signal();
   }
 
   #onTransition = (updatedQueries: QueryToken[]) => {
@@ -206,6 +207,7 @@ export class ConvexSignalsClient {
    * @see BaseConvexClient.setAuth
    */
   setAuth(fetcher: AuthTokenFetcher) {
+    this.#authenticated.value = undefined;
     this.#client.setAuth(fetcher, (authenticated) => {
       this.#authenticated.value = authenticated;
     });
@@ -219,6 +221,6 @@ export class ConvexSignalsClient {
 
   /** A signal storing whether the client is currently authenticated. */
   get authenticated() {
-    return this.#authenticated;
+    return this.#authenticated as Signalish<boolean | undefined, false>;
   }
 }
