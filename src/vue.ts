@@ -1,5 +1,5 @@
 import { computed, effect, ref, stop } from 'vue';
-import { ConvexSignalsClient } from './client';
+import { ConvexSignalsClient } from './client.js';
 
 /** Specialized `ConvexSignalsClient` using Vue 3 `ref`s & `computed`s. */
 export class VueConvexSignalsClient extends ConvexSignalsClient {

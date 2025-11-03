@@ -1,6 +1,6 @@
 import type { ArgsAndOptions, FunctionReference } from 'convex/server';
-import type { ConvexSignalsClient, QueryOptions } from './client';
 import { useEffect, useMemo } from 'preact/hooks';
+import type { ConvexSignalsClient, QueryOptions } from './client.js';
 
 export function useQuery<T extends FunctionReference<"query">>(client: ConvexSignalsClient, query: T, ...args: ArgsAndOptions<T, QueryOptions>) {
   const signal = useMemo(() => client.querySignal(query, ...args), [client, query, ...args]);

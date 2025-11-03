@@ -1,9 +1,7 @@
 import { computed, signal } from '@preact/signals';
 import { BaseConvexClient, type MutationOptions, type QueryToken } from 'convex/browser';
 import type { AuthTokenFetcher } from 'convex/react';
-import type { ArgsAndOptions, FunctionReturnType } from 'convex/server';
-import { getFunctionName } from 'convex/server';
-import type { FunctionReference } from 'convex/server';
+import { getFunctionName, type ArgsAndOptions, type FunctionReference, type FunctionReturnType } from 'convex/server';
 
 const IsLoaded = Symbol('IsLoaded');
 
@@ -52,7 +50,10 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
   sync(): Promise<FunctionReturnType<Query>>;
 }
 
-export class ConvexSignalsClient {
+/**
+ * The framework-agnostic convex signals client.
+ */
+export class ConvexSignalsClient<SignalMixin extends object = {}> {
   #client: BaseConvexClient;
   #signals = new Map<QueryToken, ConvexSignal<any>>();
   #authenticated: Signalish<boolean | undefined, true>;
