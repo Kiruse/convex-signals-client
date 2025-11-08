@@ -37,6 +37,8 @@ export interface QueryOptions {
   timeout?: number;
 }
 
+type FinalizeEntry = [QueryToken, () => void];
+
 /** A `ConvexSignal` is a readonly signal integrating with Convex reactive queries. */
 export interface ConvexSignal<Query extends FunctionReference<"query">> {
   get value(): FunctionReturnType<Query>;
@@ -44,8 +46,6 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
   subscribe(fn: (value: FunctionReturnType<Query> | undefined) => void): (() => void);
   /** Refreshes the signal value from the underlying state. Called automatically by the client. You only need `value` or `subscribe` to use the signal.zs */
   refresh(): void;
-  /** Unsubscribe from the underlying Convex query. The signal will no longer update. */
-  destroy(): void;
   /** Waits until the signal has been first loaded from the server and returns its value. */
   sync(): Promise<FunctionReturnType<Query>>;
 }
@@ -53,12 +53,13 @@ export interface ConvexSignal<Query extends FunctionReference<"query">> {
 /**
  * The framework-agnostic convex signals client.
  */
-export class ConvexSignalsClient<SignalMixin extends object = {}> {
+export class ConvexSignalsClient {
   #client: BaseConvexClient;
   #signals = new Map<QueryToken, ConvexSignal<any>>();
   #authenticated: Signalish<boolean | undefined, true>;
   #signal: SignalFactory;
   #computed: ComputedFactory;
+  #finalizeRegistry = new FinalizationRegistry<FinalizeEntry>(this.#onFinalize.bind(this));
 
   constructor(baseUrl: string, options: ConvexSignalsClientOptions = {}) {
     this.#client = new BaseConvexClient(
@@ -80,6 +81,11 @@ export class ConvexSignalsClient<SignalMixin extends object = {}> {
       }
     }
   };
+
+  #onFinalize([queryToken, unsub]: FinalizeEntry) {
+    unsub();
+    this.#signals.delete(queryToken);
+  }
 
   action<Action extends FunctionReference<"action">>(
     action: Action,
@@ -103,38 +109,15 @@ export class ConvexSignalsClient<SignalMixin extends object = {}> {
     }
 
     const sig = this.#signal<FunctionReturnType<Query>>();
-    let counter = 0;
-    const result = {
+    const result: any = Object.assign(sig, {
       // note: this field is updated in the #onTransition callback
       [IsLoaded]: false,
-      get value() {
-        return sig.value;
-      },
-      get isLoaded() {
-        // force hooking into effects & computed signals so that `isLoaded` can be used as condition
-        // for `value`.
-        sig.value;
-        return this[IsLoaded];
-      },
-      subscribe: (fn: (value: FunctionReturnType<Query> | undefined) => void) => {
-        counter++;
-        const unsub = sig.subscribe(fn);
-        return () => {
-          unsub();
-          if (--counter === 0) {
-            unsubscribe();
-            this.#signals.delete(queryToken);
-          }
-        };
-      },
+
       refresh: () => {
         sig.value = this.#client.localQueryResult(name, args);
       },
-      destroy: () => {
-        this.#signals.delete(queryToken);
-        unsubscribe();
-      },
-      sync(timeout = 10000) {
+
+      sync(this: any, timeout = 10000) {
         return new Promise((resolve, reject) => {
           var timer = setTimeout(() => {
             reject(new Error('Query timed out'));
@@ -149,8 +132,14 @@ export class ConvexSignalsClient<SignalMixin extends object = {}> {
           });
         });
       },
-    };
+    });
+
+    Object.defineProperty(result, 'isLoaded', {
+      get: () => result[IsLoaded],
+    });
+
     this.#signals.set(queryToken, result);
+    this.#finalizeRegistry.register(result, [queryToken, unsubscribe]);
     return result;
   }
 
@@ -159,21 +148,22 @@ export class ConvexSignalsClient<SignalMixin extends object = {}> {
     query: Query,
     fnArgsAndOptions: () => ArgsAndOptions<Query, QueryOptions>
   ): ConvexSignal<Query> {
-    const sig = this.#computed(() => {
+    const querySig = this.#computed(() => {
       return this.querySignal(query, ...fnArgsAndOptions());
     });
-    return {
-      get value() {
-        return sig.value.value;
-      },
-      get isLoaded() {
-        return sig.value.isLoaded;
-      },
-      refresh: () => sig.value.refresh(),
-      subscribe: (fn: (value: FunctionReturnType<Query> | undefined) => void) => sig.value.subscribe(fn),
-      destroy: () => sig.value.destroy(),
-      sync: () => sig.value.sync(),
-    }
+
+    const baseSig = this.#computed(() => querySig.value.value);
+
+    const resultSig: any = Object.assign(baseSig, {
+      refresh: () => querySig.value.refresh(),
+      sync: () => querySig.value.sync(),
+    });
+
+    Object.defineProperty(resultSig, 'isLoaded', {
+      get: () => (querySig.value as any)[IsLoaded],
+    });
+
+    return resultSig;
   }
 
   query<Query extends FunctionReference<"query">>(
